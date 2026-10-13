@@ -10,8 +10,8 @@ from scipy.integrate import simpson
 # folder lists
 Facet_folders = ["F020", "F050", "F100", "F200"]
 Hurst_folders = ["H05"]
-RMSH_folders  = ["H000000", "H001152"]
-SIGLs         = [0.0, 0.025]
+RMSH_folders  = ["H000000", "H001152", "H002305", "H003457", "H004610"]
+SIGLs         = [0.0, 0.025, 0.05, 0.075, 0.1]
 
 def load_datacube(ffolder, hfolder, rfolder):
 
@@ -66,7 +66,7 @@ lam = 4.996
 
 for sig_l, rfolder in zip(SIGLs, RMSH_folders):
     
-    fig, ax = plt.subplots(1, 1, figsize=(10, 6))
+    fig, ax = plt.subplots(1, 1, figsize=(14, 7))
 
     for ffolder in Facet_folders:
         for hfolder in Hurst_folders:
@@ -95,4 +95,5 @@ for sig_l, rfolder in zip(SIGLs, RMSH_folders):
     plt.title(f"Fresnel Zone w/ "+r"$\sigma_\lambda=$"+f"{sig_l:0.3f} & H={hurst:0.2f}")
     plt.axhline(0, linestyle="--", color="black", linewidth=1)
     plt.legend()
-    plt.show()
+    plt.savefig(f"{ffolder}{hfolder}{rfolder}.png", dpi=300)
+    #plt.show()

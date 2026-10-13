@@ -1,16 +1,8 @@
 import sys
 
-sys.path.append("/mnt/c/Users/duby2704/OneDrive - UCB-O365/Documents/EuropaRaypaths/src/PYTHON")
+sys.path.append("../..//EuropaRaypaths/src/PYTHON")
 import param_gen       as pg
 
-domainpar = {
-    "ox": -4100,
-    "oy": -4100,
-    "oz": 0,
-    "fs": 10,
-    "nx": 820,
-    "ny": 820,
-}
 
 recpar = {
     "rx_window_m": 0.5e3,         # receive window size [m]
@@ -24,15 +16,47 @@ sourcepar = {
     "aperture": 70,
 }
 
-otherpar = {
-    "lossless": False,
-    "fresnel": True,
-    "rms_height": 0.239 #0.6215
-}
+Hurst = 0.05
+sig_l = 0.025
+lam = 4.996
+surf_width  = 8200        # simulation width [m]
+facet_sizes = [20, 10, 5, 2]
+RMSh_vals   = [0, 0.1152, 0.2305, 0.3457, 0.4610]
+sigl_vals   = [0, 0.025, 0.05, 0.75, 0.1]
+Hurst_exps  = [0.05]
 
-# first export basic single example stuff
-params = pg.gen_params("REASON_VHF", "planetary_ice", domainpar, recpar, sourcepar, par=otherpar)
-pg.export_params(params, f"VHF_params", directory="Simpar/.")
+for fs in facet_sizes:
+    for Hurst in Hurst_exps:
+        for rmsh, sig_l in zip(RMSh_vals, sigl_vals):
+            
+            fdir = f"F{int(fs*10):03d}"
+            hdir = f"H{int(Hurst*100):02d}"
+            rdir = f"H{int(rmsh*10000):06d}"
+
+            surfdir = f"Surfaces/{fdir}/{hdir}/{rdir}"
+
+            domainpar = {
+                "ox": -4100,
+                "oy": -4100,
+                "oz": 0,
+                "fs": fs,
+                "nx": int(surf_width) / fs,
+                "ny": int(surf_width) / fs,
+            }
+
+            fct = domainpar['fs']
+            rms_fct = sig_l * lam * (fct / lam)**Hurst
+
+            otherpar = {
+                "lossless": False,
+                "fresnel": True,
+                "rms_height": rms_fct
+            }
+
+            # first export basic single example stuff
+            params = pg.gen_params("REASON_VHF", "planetary_ice", domainpar, recpar, sourcepar, par=otherpar)
+            pg.export_params(params, f"VHF_params", directory=surfdir)
+            print(f"Exported into directory {surfdir}")
 
 # --- MAKE SOURCE PATH ---
 

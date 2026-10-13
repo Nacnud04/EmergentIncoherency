@@ -3,20 +3,24 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.special import jv
 
-hurst_folder = "H40"
-rms_folder = "H001256"
+#facet_folder = "F020"
+facet_folder = "F050"
+hurst_folder = "H05"
+rms_folder = "H000000"
+#rms_folder = "H001152"
 #rms_folder = "H003265"
 
-radar_paths = np.sort(glob.glob(f"Radargrams/{hurst_folder}/{rms_folder}/rdr*/rdrgrm.npy"))
+radar_paths = np.sort(glob.glob(f"Radargrams/{facet_folder}/{hurst_folder}/{rms_folder}/rdr*/rdrgrm.npy"))
 data = np.stack([np.load(p) for p in radar_paths], axis=-1)
 
 Hs = np.logspace(np.log10(1000e3), np.log10(25e3), data.shape[1])
 
 # linear power from complex voltage
-P = np.abs(data[50, :, :])**2
+smpl = data.shape[0] // 2
+P = np.abs(data[smpl, :, :])**2
 P_mean = np.mean(P, axis=1)
 
-breakpoint = 600e3#520e3
+breakpoint = 100e3#520e3
 
 x_fits, y_fits = [], []
 ms = []
@@ -65,18 +69,21 @@ def L(H, sig_l, h_l, N, dx=1e-5):
     integral = simpson(integrand, x=x, axis=1)
     return integral / N
 
-Hurst = 0.4
-rms_H_m = 5.0# 13.0
-rms_P_m = 10e3
+Hurst = 0.05#0.4
+#rms_H_m = 0#5.0# 13.0
+#rms_P_m = 10e3
 lam   = 4.99654
 
 # convert to for baseline profile of lambda
-sig_lam = (rms_H_m / lam) / ((rms_P_m / lam)**Hurst)
-print(sig_lam)
+#sig_lam = (rms_H_m / lam) / ((rms_P_m / lam)**Hurst)
+#print(sig_lam)
+
+sig_lam = 0#0.025
 
 Ls = L(Hurst, sig_lam, Hs/lam, N)
 Fh = (1 / ((Hs / 5.0)**2)) * Ls
 Pr = (100 * (10**0.73)**2 * Fh) / (4 * np.pi)**2
+#Pr = (100 * (10**0.73)**2 * lam**2) / (2**4 * np.pi**2 * Hs**2)
 
 plt.figure()
 for i in range(P_db.shape[-1]):
@@ -93,7 +100,13 @@ plt.ylabel("Power [dB]")
 plt.xlim(np.min(Hs), np.max(Hs))
 plt.legend()
 plt.tight_layout()
+#plt.xlim(25e3, 100e3)
 plt.show()
 
-plt.semilogx(Hs, P_mean_db - 10*np.log10(Pr))
+plt.semilogx(Hs, P_mean_db - 10*np.log10(Pr), color="black", linewidth=1)
+plt.axhline(0, color="red", linestyle=":", alpha=0.5, linewidth=1)
+plt.ylabel("Error [dB]")
+plt.xlabel("Altitude [m]")
+plt.title(r"$\sigma_\lambda=$" + f"{sig_lam:0.3f} | H={Hurst:0.2f}")
+#plt.xlim(25e3, 100e3)
 plt.show()
