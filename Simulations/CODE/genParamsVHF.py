@@ -16,14 +16,13 @@ sourcepar = {
     "aperture": 70,
 }
 
-Hurst = 0.05
 sig_l = 0.025
 lam = 4.996
 surf_width  = 8200        # simulation width [m]
 facet_sizes = [20, 10, 5, 2]
 RMSh_vals   = [0, 0.1152, 0.2305, 0.3457, 0.4610]
-sigl_vals   = [0, 0.025, 0.05, 0.75, 0.1]
-Hurst_exps  = [0.05]
+sigl_vals   = [0, 0.025, 0.05, 0.075, 0.1]
+Hurst_exps  = [0.05, 0.1, 0.2]
 
 for fs in facet_sizes:
     for Hurst in Hurst_exps:
@@ -48,15 +47,21 @@ for fs in facet_sizes:
             rms_fct = sig_l * lam * (fct / lam)**Hurst
 
             otherpar = {
-                "lossless": False,
+                'lossless': False,
                 "fresnel": True,
-                "rms_height": rms_fct
+                "rms_height": rms_fct,
+                "roughness_model": "specular",
             }
 
-            # first export basic single example stuff
-            params = pg.gen_params("REASON_VHF", "planetary_ice", domainpar, recpar, sourcepar, par=otherpar)
-            pg.export_params(params, f"VHF_params", directory=surfdir)
-            print(f"Exported into directory {surfdir}")
+            roughness_models = ("specular", "coherent_specular", "simple_backscatter")
+
+            for rModel in roughness_models:
+                otherpar["roughness_model"] = rModel 
+
+                # first export basic single example stuff
+                params = pg.gen_params("REASON_VHF", "planetary_ice", domainpar, recpar, sourcepar, par=otherpar)
+                pg.export_params(params, f"VHF_{rModel}", directory=surfdir)
+                print(f"Exported VHF_{rModel} into directory {surfdir}")
 
 # --- MAKE SOURCE PATH ---
 

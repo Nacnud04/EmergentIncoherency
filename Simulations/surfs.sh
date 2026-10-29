@@ -10,7 +10,7 @@ elif [[ $# -gt 0 ]]; then
     exit 2
 fi
 
-H_values=(0.05)
+H_values=(0.05 0.1 0.2)
 
 # Matching entries at each index describe one facet configuration.
 N_values=(3000 1640 820 410)
@@ -20,8 +20,9 @@ facet_tags=(020 050 100 200)
 RMSHeight_values=(0.0000 0.1152 0.2305 0.3457 0.4610)
 Baseline_values=(10000 1 1 1 1)
 height_tags=(000000 001152 002305 003457 004610)
+hurst_tags=(05 10 20)
 
-for H in "${H_values[@]}"; do
+for k in "${!H_values[@]}"; do
     for i in "${!N_values[@]}"; do
         N="${N_values[$i]}"
         L="${L_values[$i]}"
@@ -29,7 +30,7 @@ for H in "${H_values[@]}"; do
         for j in "${!RMSHeight_values[@]}"; do
             Baseline="${Baseline_values[$j]}"
             RMSHeight="${RMSHeight_values[$j]}"
-            OutputDir="Surfaces/F${facet_tags[$i]}/H05/H${height_tags[$j]}"
+            OutputDir="Surfaces/F${facet_tags[$i]}/H${hurst_tags[$k]}/H${height_tags[$j]}"
 
             mkdir -p "$OutputDir"
 
@@ -40,7 +41,7 @@ for H in "${H_values[@]}"; do
             fi
 
             python CODE/genSurfs.py \
-                "$H" "$N" "$L" "$Baseline" "$OutputDir" \
+                "${H_values[$k]}" "$N" "$L" "$Baseline" "$OutputDir" \
                 --RMSHeight "$RMSHeight" \
                 --N_surfs 32 \
                 --seed 2026

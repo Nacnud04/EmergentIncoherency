@@ -1,38 +1,24 @@
-import glob
+import os
 import numpy as np
 import matplotlib.pyplot as plt
 
 from scipy.special import jv
 from scipy.integrate import simpson
 
-
+from chris_fractal import fractal_loss
 
 # folder lists
-Facet_folders = ["F020", "F050", "F100", "F200"]
+#Facet_folders = ["F020", "F050", "F100", "F200"]
+Facet_folders = ["F200"]
 Hurst_folders = ["H05"]
-RMSH_folders  = ["H000000", "H001152", "H002305", "H003457", "H004610"]
-SIGLs         = [0.0, 0.025, 0.05, 0.075, 0.1]
-
-def load_datacube(ffolder, hfolder, rfolder):
-
-    radar_paths = np.sort(
-                    glob.glob(f"Radargrams/{ffolder}/{hfolder}/{rfolder}/rdr*/rdrgrm.npy")
-                  )
-
-    datacube = np.stack([np.load(p) for p in radar_paths], axis=-1) 
-
-    # convert data cube into power
-    datacube = np.abs(datacube) ** 2
-
-    return datacube
-
+#RMSH_folders  = ["H000000", "H001152", "H002305", "H003457", "H004610"]
+#SIGLs         = [0.0, 0.025, 0.05, 0.075, 0.1]
+RMSH_folders = ["H001152"]
+SIGLs        = [0.025]
 
 def extract_surface_return(datacube):
-
     smpl = datacube.shape[0] // 2
-    
     return datacube[smpl, :, :]
-
 
 def L(H, sig_l, h_l, N, dx=1e-5):
     x = np.linspace(0.0, 1.0, int(np.ceil(1/dx)) + 1)
@@ -47,53 +33,79 @@ def L(H, sig_l, h_l, N, dx=1e-5):
     return integral / N
 
 def Pr(Pt, G, H, sig_l, h_l):
-
     N  = (1 - jv(0, 2*np.pi)) / (2*np.pi)
     Ls = L(H, sig_l, h_l, N)
     Fh = (1 / (h_l**2)) * Ls
     Pr = (Pt * (10**(G/10))**2 * Fh) / (4 * np.pi)**2
-
     return Pr
-
 
 Pt = 100
 Gt = 7.3
 Hs = np.logspace(np.log10(1000e3), np.log10(25e3), 1000)
 lam = 4.996
+c = 299792458
 
-# iterate over all combinations
+# RMS height at 1 meter:
+RMS_1m = np.array([int(f[1:])/1e4 for f in RMSH_folders])
 
+def Pr_Chris(Pt, G, H, sig_1m, Heights, lam):
+    N  = (1 - jv(0, 2*np.pi)) / (2*np.pi)
+    Ls = fractal_loss(sig_1m, H, c / lam, Heights, lag=1)
+    Fh = (1 / ((Heights/lam)**2)) * Ls
+    Pr = (Pt * (10**(G/10))**2 * Fh) / (4 * np.pi)**2
+    return Pr
 
-for sig_l, rfolder in zip(SIGLs, RMSH_folders):
-    
-    fig, ax = plt.subplots(1, 1, figsize=(14, 7))
+def extractAndGetDifference(ffolder, hfolder, rfolder, pdir):
 
-    for ffolder in Facet_folders:
-        for hfolder in Hurst_folders:
+    fs    = int(ffolder[1:]) / 10
+    hurst = int(hfolder[1:]) / 100
+    rmsH  = int(rfolder[1:]) / 10000
 
-            fs    = int(ffolder[1:]) / 10
+    print(f"Loading in for {ffolder}/{hfolder}/{rfolder}")
+
+    npy_file = os.path.join(pdir, f"{ffolder}{hfolder}{rfolder}.npy")
+    cube = np.load(npy_file)
+
+    PrNUM = extract_surface_return(cube)
+    PrAVG = np.mean(PrNUM, axis=1)
+
+    PrANA = Pr(Pt, Gt, hurst, sig_l, Hs/lam)
+    PrANA_CH = Pr_Chris(Pt, Gt, hurst, r1m, Hs, lam)
+    PrERR = 10*np.log10(PrAVG) - 10*np.log10(PrANA_CH)
+
+    return PrERR
+
+# same subdirectory for inputs and outputs
+
+backscatter_models = ("Lossless", "CoherentLoss", "CoherentLossSqrt", "SimpleBackscatter")
+
+for hfolder in Hurst_folders:
+    for sig_l, rfolder, r1m in zip(SIGLs, RMSH_folders, RMS_1m):
+        if sig_l == 0:
+            continue
+        for ffolder in Facet_folders:
+
+            fig, ax = plt.subplots(1, 1, figsize=(14, 7))
+
+            fs = int(ffolder[1:]) / 10
             hurst = int(hfolder[1:]) / 100
-            rmsH  = int(rfolder[1:]) / 10000
 
-            print(f"Loading in for {ffolder}/{hfolder}/{rfolder}")
+            # iterate over backscatter models
+            for bmdl in backscatter_models:
 
-            # first load in the datacube and get power at surface
-            cube  = load_datacube(ffolder, hfolder, rfolder)
-            PrNUM = extract_surface_return(cube)
-            PrAVG = np.mean(PrNUM, axis=1)
+                PLOT_DIR = f"Plots/{bmdl}"
 
-            # get analytic power
-            PrANA = Pr(Pt, Gt, hurst, sig_l, Hs/lam)
+                PrERR = extractAndGetDifference(ffolder, hfolder, rfolder, PLOT_DIR)
+                
+                ax.semilogx(Hs, PrERR, label=f"{bmdl}", linewidth=1)
 
-            # get error
-            PrERR = 10*np.log10(PrAVG) - 10*np.log10(PrANA)
+            ax.set_ylabel("Power Error [dB]")
+            ax.set_xlabel("Altitude [m]")
+            ax.set_title(f"Fresnel Zone w/ " + r"$\sigma_\lambda=$" + f"{sig_l:0.3f} & H={hurst:0.2f} & facet size={fs}")
+            ax.axhline(0, linestyle="--", color="black", linewidth=1)
+            ax.legend()
 
-            ax.semilogx(Hs, PrERR, label=f"Facet size: {fs}", linewidth=1)
+            out_png = os.path.join("Plots/Comparison", f"{hfolder}{rfolder}{ffolder}.png")
+            plt.savefig(out_png, dpi=300)
+            plt.close()
 
-    plt.ylabel("Power Error [dB]")
-    plt.xlabel("Altitude [m]")
-    plt.title(f"Fresnel Zone w/ "+r"$\sigma_\lambda=$"+f"{sig_l:0.3f} & H={hurst:0.2f}")
-    plt.axhline(0, linestyle="--", color="black", linewidth=1)
-    plt.legend()
-    plt.savefig(f"{ffolder}{hfolder}{rfolder}.png", dpi=300)
-    #plt.show()
