@@ -1,0 +1,17 @@
+# SOURCE: Predicting mean depth and area fraction of Antarctic supraglacial melt lakes with physics-based parameterizations
+#    DOI: 10.1038/s41467-025-61798-8
+# AUTHOR: Danielle Grau, Azeez Hussain & Alexander A. Robel 
+#   INFO: Antarctica roughness from ICESat-2
+#
+# PARAMS:
+#   Effective baseline [m]: 10000 
+#
+# COLUMNS:
+#   Ice type
+#   RMS height [m]
+#   Hurst exponent
+#   
+# DATA
+Type,RMS Height,Hurst
+Floating Ice,4.7,0.3985
+Grounded Ice,13,0.3985

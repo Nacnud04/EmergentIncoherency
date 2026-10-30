@@ -1,0 +1,24 @@
+# SOURCE: Global surface slopes and roughness of the Moon from the Lunar Orbiter Laser Altimeter
+#    DOI: 10.1029/2010JE003716
+# AUTHOR: M. A. Rosenburg, O. Aharonson, J. W. Head, M. A. Kreslavsky, E. Mazarico, G. A. Neumann, D. E. Smith, M. H. Torrence, M. T. Zuber
+#   INFO: Moon surface roughness derived from LOLA
+#
+# PARAMS:
+#   Effective baseline [m]: 17 
+#
+# COLUMNS:
+#   Geographic Region
+#   Median slope at effective baseline [deg]
+#   Median hurst exponent
+#   Median breakover scale [km]
+#   Typical deviogram shape
+#
+# DATA
+Region,Slope,Hurst,Breakover,DeviogramShape
+Highlands,7.5,0.95,0.98,Monofractal;Bilinear
+Maria,2.0,0.76,0.54,Complex
+South Pole-Aitken Basin: All,7.2,0.95,1.01,Monofractal;Bilinear
+South Pole-Aitken Basin: Floor,5.8,0.94,1.01,Monofractal;Bilinear;Complex
+South Pole,7.6,0.95,1.01,Monofractal;Bilinear
+North Pole,6.9,0.94,0.97,Monofractal;Bilinear;Complex
+

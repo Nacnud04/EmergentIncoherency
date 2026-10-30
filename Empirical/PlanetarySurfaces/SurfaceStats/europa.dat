@@ -1,0 +1,25 @@
+# SOURCE: The surface roughness of Europa derived from Galileo stereo images
+#    DOI: 10.1016/j.icarus.2020.113669
+# AUTHOR: G. Steinbrügge, J.R.C. Voigt, D.M. Schroeder, A. Stark, M.S. Haynes, K.M. Scanlan, C.W. Hamilton, D.A. Young, H. Hussmann, C. Grima, D.D. Blankenship
+#   INFO: Europa surface roughness from imagery
+#
+# PARAMS:
+#   Effective baseline [m]: 1 
+#
+# COLUMNS:
+#   Geographic Region
+#   RMS height deviation [m]
+#   Hurst exponent
+#   Hurst exponent standard deviation
+#
+# DATA
+Region,RMSDeviation,Hurst,HurstDeviation
+Ridged Plains Pre-Break,0.58,0.65,0.02
+Ridged Plains Post-Break,0.58,0.28,0.01
+Chaos Terrain Pre-1km,1.31,0.69,0.05
+Chaos Terrain Post-1km,1.31,0.36,0.01
+Crater Material Pre-1km,0.60,0.69,0.05
+Crater Material Post-1km,0.60,0.52,0.02
+Band/Double Ridge Pre-1km,0.66,0.43,0.01
+Band/Double Ridge Post-1km,0.66,0.24,0.01
+
