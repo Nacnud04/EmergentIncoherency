@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 
 # set up constant parameters
 lam = 4.996      # wavelength [m]
-rad_cor = 0.3      # radians for phase correlation
+rad_cor = 1/8 * (2 * np.pi)    # radians for phase correlation
 
 # set up range parameters
 sig_ls = np.linspace(0.025, 0.1, 250)    # RMS height [lambda]

@@ -154,10 +154,6 @@ for sigma in tqdm(sigmas):
     Prs.append(P_total)
     Fracs.append(P_n / P_total if P_total != 0 else 0)
 
-    #print(f"Coherent power:   {P_c:.6e}")
-    #print(f"Incoherent power: {P_n:.6e}")
-    #print(f"Total power:      {P_total:.6e}")
-    #print(f"Incoherent fraction: {P_n/P_total:.4%}")
 
 
 # --- COMPARE ANALYTIC SOL WITH HAYNES ---

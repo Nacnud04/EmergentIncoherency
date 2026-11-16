@@ -28,8 +28,8 @@ for f, lam in zip(Fs, lams):
     ax[0].semilogx(Hs / 1e3, np.degrees(theta), label=f"{f/1e6:.0f} MHz")
 
     # compute the error introduced by q
-    error      = np.abs(np.cos(theta) - theta) / np.cos(theta)
-    ax[1].semilogx(Hs / 1e3, error, label=f"{f/1e6:.0f} MHz")
+    error      = (np.abs(np.cos(theta) - 1) / np.cos(theta))
+    ax[1].semilogx(Hs / 1e3, 100 * error, label=f"{f/1e6:.0f} MHz")
 
 ax[0].set_ylabel(r"$\theta_f$ [$^\circ$]")
 
@@ -47,8 +47,8 @@ for a in ax:
     a.grid()
     a.set_xlabel("Altitude [km]")
 
-ax[1].set_ylabel("Error")
-ax[1].set_title(r"Error in $\cos(\theta_f)$ Approximation")
+ax[1].set_ylabel(r"$\frac{\cos(\theta_f) - 1}{\cos(\theta_f)}$ [\%]")
+ax[1].set_title(r"Error in $\cos(\theta_f)\approx 1$ Approximation")
 ax[0].set_title(r"Angle to Edge of First Fresnel Zone")
 
 plt.savefig("FresnelAngle.pdf")
