@@ -1,6 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
+
 from scipy.signal import fftconvolve
+from scipy.special import expi
 from tqdm import tqdm
 
 import roughSynth as rs
@@ -66,6 +68,7 @@ def w(P, rho):
 
 Pcs = []
 Pns = []
+Pns_norm = []  # Normalized-covariance incoherent power
 Prs = []
 Fracs = []
 
@@ -143,7 +146,25 @@ for sigma in tqdm(sigmas):
     # Convolve weights with phasor covariance
     KW = fftconvolve(np.conj(W), K_lag, mode="same")
 
-    P_n = np.sum(W * KW)
+    P_n = np.real(np.sum(W * KW))
+
+    # --- NORMALIZED INCOHERENT POWER ---
+
+    # Normalize covariance to unit zero-lag variance
+    K0 = K_lag[M-1, N-1]
+
+    if K0 > 1e-12:
+        K_norm = K_lag / K0
+
+        KW_norm = fftconvolve(
+            np.conj(W),
+            K_norm,
+            mode="same"
+        )
+
+        P_n_norm = np.real(np.sum(W * KW_norm))
+    else:
+        P_n_norm = 0.0
 
     # --- TOTAL POWER ---
 
@@ -151,6 +172,7 @@ for sigma in tqdm(sigmas):
 
     Pcs.append(P_c)
     Pns.append(P_n)
+    Pns_norm.append(P_n_norm)
     Prs.append(P_total)
     Fracs.append(P_n / P_total if P_total != 0 else 0)
 
@@ -161,7 +183,7 @@ for sigma in tqdm(sigmas):
 P_fresnel = (Pt * G_t * G_t * lam**2) / (2**4 * np.pi**2 * h**2)
 P_fresnel_dB = 10 * np.log10(P_fresnel)
 
-print(f"Haynes Fresnel Power: {P_fresnel_dB:.2sf} dB")
+print(f"Haynes Fresnel Power: {P_fresnel_dB:.2f} dB")
 
 print(f"Analytic Fresnel Power: {10 * np.log10(np.abs(Prs[0])):.2f} dB")
 
@@ -194,4 +216,61 @@ for a in ax:
     a.grid()
     a.legend()
 
+plt.savefig("GaussianPowerFraction.pdf")
+plt.show()
+
+
+
+# --- PLOT AREAS ---
+
+
+def RCS(P_t, P_r, G, lam, R):
+    return (P_r * (4 * np.pi)**3 * R**4) / (P_t * G**2 * lam**2)
+
+
+def Aeff_C(rcs, lam):
+    return (lam * np.sqrt(rcs)) / (np.sqrt(4 * np.pi))
+
+
+RCS_C = RCS(Pt, np.array(Pcs), G_t, lam, h)
+RCS_N = RCS(Pt, np.array(Pns), G_t, lam, h)
+
+#A_eff_C = Aeff_C(RCS_C, lam)
+
+# Effective incoherent area from normalized-covariance reference power
+A_ill_eff = Aeff_C(RCS_C[0], lam)
+
+a = q0**2 * sigmas**2
+A_eff_C = np.exp(a / -2) * A_ill_eff
+
+A_eff_N = np.divide(
+    A_ill_eff * np.array(Pns),
+    np.array(Pns_norm),
+    out=np.zeros_like(np.array(Pns, dtype=float)),
+    where=np.array(Pns_norm) > 0
+)
+
+A_eff_N = (1 - np.exp(a / -2)) * A_ill_eff
+
+fig, ax = plt.subplots(1, 2, figsize=(9, 5))
+# effective area plot
+ax[0].plot(sigmas, A_eff_C, label="$A_\mathrm{eff,C}$")
+ax[0].plot(sigmas, A_eff_N, label="$A_\mathrm{eff,N}$")
+ax[0].axhline(
+    y=A_ill_eff,
+    linestyle="--",
+    label=r"$A_\mathrm{eff,ill}$"
+)
+ax[0].set_ylabel(r"Effective Area [$m^2$]")
+ax[0].grid()
+ax[0].legend(fontsize=10)
+ax[0].set_title("Area fraction")
+# total area plot
+ax[1].plot(sigmas, (A_eff_C + A_eff_N) / A_ill_eff, color="black")
+ax[1].grid()
+ax[1].set_title(r"$\frac{A_\mathrm{eff,C} + A_\mathrm{eff,N}}{A_\mathrm{eff,ill}}$")
+ax[1].set_ylabel(r"Excess Area Fraction")
+# both
+for a in ax:
+    a.set_xlabel(r"RMS Height [m]")
 plt.show()
