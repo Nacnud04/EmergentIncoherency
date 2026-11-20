@@ -221,56 +221,131 @@ plt.show()
 
 
 
-# --- PLOT AREAS ---
 
+# --- EFFECTIVE AREA AND BETA ANALYSIS ---
 
 def RCS(P_t, P_r, G, lam, R):
     return (P_r * (4 * np.pi)**3 * R**4) / (P_t * G**2 * lam**2)
 
 
 def Aeff_C(rcs, lam):
-    return (lam * np.sqrt(rcs)) / (np.sqrt(4 * np.pi))
+    return (lam * np.sqrt(rcs)) / np.sqrt(4 * np.pi)
 
 
+# Convert simulated received powers to RCS
 RCS_C = RCS(Pt, np.array(Pcs), G_t, lam, h)
 RCS_N = RCS(Pt, np.array(Pns), G_t, lam, h)
 
-#A_eff_C = Aeff_C(RCS_C, lam)
+# --- REFERENCE AREAS ---
 
-# Effective incoherent area from normalized-covariance reference power
-A_ill_eff = Aeff_C(RCS_C[0], lam)
+# First Fresnel zone
+fr = np.sqrt(lam * h / 2 + lam**2 / 16)
 
+# Geometric Fresnel-zone area
+A_F_geom = np.pi * fr**2
+
+# Smooth-surface coherent reference area
+A_F_c0 = Aeff_C(RCS_C[0], lam)
+
+# Incoherent intensity-weighted reference area
+# Two-way Friis amplitude weighting: W ~ 1/R^2
+A_F_i0 = np.pi * h**2 * fr**2 / (h**2 + fr**2)
+
+print(f"Geometric Fresnel area:          {A_F_geom:.2f} m^2")
+print(f"Smooth coherent reference area:  {A_F_c0:.2f} m^2")
+print(f"Analytic coherent reference:     {lam*h:.2f} m^2")
+print(f"Incoherent reference area:       {A_F_i0:.2f} m^2")
+
+
+# --- EFFECTIVE AREAS ---
+
+# Gaussian roughness parameter
 a = q0**2 * sigmas**2
-A_eff_C = np.exp(a / -2) * A_ill_eff
+
+# Coherent effective area
+A_eff_C = A_F_c0 * np.exp(-a / 2)
+
+# Incoherent effective area from normalized covariance power
+Pns = np.asarray(Pns)
+Pns_norm = np.asarray(Pns_norm)
 
 A_eff_N = np.divide(
-    A_ill_eff * np.array(Pns),
-    np.array(Pns_norm),
-    out=np.zeros_like(np.array(Pns, dtype=float)),
-    where=np.array(Pns_norm) > 0
+    A_F_i0 * Pns,
+    Pns_norm,
+    out=np.zeros_like(Pns, dtype=float),
+    where=Pns_norm > 0
 )
 
-A_eff_N = (1 - np.exp(a / -2)) * A_ill_eff
+# --- NORMALIZED EFFECTIVE AREAS ---
 
-fig, ax = plt.subplots(1, 2, figsize=(9, 5))
-# effective area plot
-ax[0].plot(sigmas, A_eff_C, label="$A_\mathrm{eff,C}$")
-ax[0].plot(sigmas, A_eff_N, label="$A_\mathrm{eff,N}$")
-ax[0].axhline(
-    y=A_ill_eff,
-    linestyle="--",
-    label=r"$A_\mathrm{eff,ill}$"
-)
-ax[0].set_ylabel(r"Effective Area [$m^2$]")
-ax[0].grid()
-ax[0].legend(fontsize=10)
-ax[0].set_title("Area fraction")
-# total area plot
-ax[1].plot(sigmas, (A_eff_C + A_eff_N) / A_ill_eff, color="black")
-ax[1].grid()
-ax[1].set_title(r"$\frac{A_\mathrm{eff,C} + A_\mathrm{eff,N}}{A_\mathrm{eff,ill}}$")
-ax[1].set_ylabel(r"Excess Area Fraction")
-# both
-for a in ax:
-    a.set_xlabel(r"RMS Height [m]")
+# Coherent amplitude-equivalent area fraction
+f_c = A_eff_C / A_F_c0
+
+# Incoherent variance-equivalent area fraction
+f_i = A_eff_N / A_F_i0
+
+
+# --- BETA PARAMETERS ---
+
+# Beta from coherent power loss
+beta_c = 1 - (A_eff_C / A_F_c0)**2
+
+# Beta from incoherent variance
+beta_i = A_eff_N / A_F_i0
+
+# Theoretical Gaussian beta
+beta_theory = 1 - np.exp(-a)
+
+
+# --- PLOT AREA and AREA FRACTIONS ---
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(9, 6), sharex=True)
+
+for y, label in [(A_eff_C, r"$A_{\mathrm{c,eff}}$"),
+                 (A_eff_N, r"$A_{\mathrm{i,eff}}$")]:
+    ax1.plot(sigmas, y, label=label)
+
+for value, style, color, label in [
+    (A_F_c0, "--", "C0", r"$A_{F,c,0}$"),
+    (A_F_i0, "--", "C1", r"$A_{F,i,0}$"),
+    (A_F_geom, ":", "black", r"$A_{F,\mathrm{geom}}$"),
+]:
+    ax1.axhline(value, linestyle=style, color=color, alpha=0.7, label=label)
+
+ax1.set(title="Coherent and Incoherent Effective Areas",
+        ylabel=r"Effective Area [$\mathrm{m}^2$]")
+ax1.grid(); ax1.legend()
+
+ax2.plot(sigmas, f_c, label=r"Coherent amplitude fraction: $f_c$")
+ax2.plot(sigmas, f_i, label=r"Incoherent variance fraction: $f_i$")
+ax2.set(title="Normalized Effective Areas", xlabel="RMS Height [m]",
+        ylabel="Normalized Effective Area", ylim=(0, 1.05))
+ax2.grid(); ax2.legend()
+
+fig.tight_layout()
+fig.savefig("effective_areas.pdf", bbox_inches="tight")
 plt.show()
+
+
+# --- PLOT BETA PARAMETER ---
+fig, ax = plt.subplots(figsize=(9, 4))
+ax.plot(sigmas, beta_c, label=r"$\beta_c$ (coherent power loss)")
+ax.plot(sigmas, beta_i, "--", label=r"$\beta_i$ (incoherent covariance)")
+ax.plot(sigmas, beta_theory, ":", color="black", linewidth=2,
+        label=r"Theoretical $\beta=1-e^{-q^2\sigma_h^2}$")
+ax.set(xlabel="RMS Height [m]", ylabel=r"$\beta$",
+       title="Comparison of Coherent and Incoherent Estimates", ylim=(0, 1.05))
+ax.grid(); ax.legend()
+
+fig.tight_layout()
+fig.savefig("beta_comparison.pdf", bbox_inches="tight")
+plt.show()
+
+
+# --- NUMERICAL CONSISTENCY CHECK ---
+
+print("\nBeta comparison:")
+print(f"Maximum |beta_c - beta_i|: "
+      f"{np.max(np.abs(beta_c - beta_i)):.6e}")
+
+print(f"Maximum |beta_i - beta_theory|: "
+      f"{np.max(np.abs(beta_i - beta_theory)):.6e}")
